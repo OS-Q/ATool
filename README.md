@@ -1,29 +1,5 @@
 # LLCOM
-<!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-5-orange.svg?style=flat-square)](#contributors-)
-<!-- ALL-CONTRIBUTORS-BADGE:END -->
 
-[English readme click here](/README_EN.md)
-
-![icon](/llcom/llcom.ico)
-
-[![Build status](https://ci.appveyor.com/api/projects/status/telji5j8r0v5001c?svg=true)](https://ci.appveyor.com/project/chenxuuu/llcom)
-[![MIT](https://img.shields.io/static/v1.svg?label=license&message=Apache+2&color=blue)](https://github.com/chenxuuu/llcom/blob/master/LICENSE)
-[![code-size](https://img.shields.io/github/languages/code-size/chenxuuu/llcom.svg)](https://github.com/chenxuuu/llcom/archive/master.zip)
-
-可运行lua脚本的高自由度串口调试工具。使用交流群：`931546484`
-
-## 下载
-
-从微软商店安装：
-
-<a href='//www.microsoft.com/store/apps/9PMPB0233S0S?cid=storebadge&ocid=badge'><img src='https://developer.microsoft.com/store/badges/images/Chinese_Simplified_get-it-from-MS.png' alt='Chinese badge' width='160'/></a>
-
-exe便携版：[国内用户点我下载](https://llcom.papapoi.com/llcom.zip)
-
-CI快照版：[Appveyor Artifacts](https://ci.appveyor.com/project/chenxuuu/llcom/build/artifacts)
-
-所有正式版本：[GitHub Releases](https://github.com/chenxuuu/llcom/releases/latest)
 
 ## 功能列表
 
@@ -135,47 +111,3 @@ response:Close()
 
 使用此功能，你可以完成大部分的自动化串口调试操作。
 
-## 接口文档
-
-接口文档可以在[这个页面](https://github.com/chenxuuu/llcom/blob/master/LuaApi.md)查看
-
-## 已知问题与待添加的功能（请大家反馈，谢谢！）
-
-- [x] ~~bug：某些条件下（比如Air720重启），COM口消失后不会被释放，导致无法再次开启该COM口，只能重启软件（[.net 框架的bug，微软的人在看了](https://github.com/dotnet/corefx/issues/39464)）~~（已解决 #2f26e68）
-
-## 开源
-
-如果各位大佬不觉得麻烦的话，欢迎对本项目进行pr或直接重构。
-
-本项目在前期只是为了实现功能，代码相当零散，所以不太适合阅读我的源码进行学习，等我有空的时候会重构代码。
-
-本项目采用Apache 2.0协议，如有借用，请保留指向该项目的链接。
-
-## Contributors ✨
-
-Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/docs/en/emoji-key)):
-
-<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
-<!-- prettier-ignore-start -->
-<!-- markdownlint-disable -->
-<table>
-  <tr>
-    <td align="center"><a href="https://github.com/whc2001"><img src="https://avatars2.githubusercontent.com/u/16266909?v=4?s=100" width="100px;" alt=""/><br /><sub><b>whc2001</b></sub></a><br /><a href="https://github.com/chenxuuu/llcom/commits?author=whc2001" title="Code">💻</a> <a href="https://github.com/chenxuuu/llcom/issues?q=author%3Awhc2001" title="Bug reports">🐛</a></td>
-    <td align="center"><a href="https://www.chenxublog.com/"><img src="https://avatars3.githubusercontent.com/u/10357394?v=4?s=100" width="100px;" alt=""/><br /><sub><b>chenxuuu</b></sub></a><br /><a href="#projectManagement-chenxuuu" title="Project Management">📆</a></td>
-    <td align="center"><a href="https://github.com/neomissing"><img src="https://avatars0.githubusercontent.com/u/22003930?v=4?s=100" width="100px;" alt=""/><br /><sub><b>neomissing</b></sub></a><br /><a href="#ideas-neomissing" title="Ideas, Planning, & Feedback">🤔</a></td>
-    <td align="center"><a href="https://github.com/RYLF"><img src="https://avatars3.githubusercontent.com/u/28991981?v=4?s=100" width="100px;" alt=""/><br /><sub><b>RuoYun</b></sub></a><br /><a href="https://github.com/chenxuuu/llcom/issues?q=author%3ARYLF" title="Bug reports">🐛</a></td>
-    <td align="center"><a href="http://www.diycms.com"><img src="https://avatars.githubusercontent.com/u/13432299?v=4?s=100" width="100px;" alt=""/><br /><sub><b>王龙</b></sub></a><br /><a href="#ideas-wanglong126" title="Ideas, Planning, & Feedback">🤔</a> <a href="https://github.com/chenxuuu/llcom/issues?q=author%3Awanglong126" title="Bug reports">🐛</a> <a href="https://github.com/chenxuuu/llcom/commits?author=wanglong126" title="Code">💻</a></td>
-  </tr>
-</table>
-
-<!-- markdownlint-restore -->
-<!-- prettier-ignore-end -->
-
-<!-- ALL-CONTRIBUTORS-LIST:END -->
-
-This project follows the [all-contributors](htts://github.com/all-contributors/all-contributors) specification. Contributions of any kind welcome!
-
-
-## 特别感谢
-
-[![icon-resharper](/image/icon-resharper.svg)](https://www.jetbrains.com/?from=LLCOM)
