@@ -19,13 +19,14 @@ namespace llcom.Model
         private bool _autoReconnect = true;
         private bool _autoSaveLog = true;
         private int _showHexFormat = 0;
+        private bool _hexSend = false;
         private bool _showSend = true;
         private int _parity = 0;
         private int _timeout = 50;
         private int _dataBits = 8;
         private int _stopBit = 1;
-        private string _sendScript = "默认";
-        private string _recvScript = "默认";
+        private string _sendScript = "default";
+        private string _recvScript = "default";
         private string _runScript = "example";
         private bool _topmost = false;
         public List<List<ToSendData>> quickSendList = new List<List<ToSendData>>();
@@ -224,6 +225,22 @@ namespace llcom.Model
             set
             {
                 _showHexFormat = value;
+                Save();
+            }
+        }
+
+        /// <summary>
+        /// 主数据发送框是否发hex
+        /// </summary>
+        public bool hexSend
+        {
+            get
+            {
+                return _hexSend;
+            }
+            set
+            {
+                _hexSend = value;
                 Save();
             }
         }
@@ -540,5 +557,15 @@ namespace llcom.Model
                     break;
             }
         }
+
+
+
+
+        private string _tcpClientServer = "qq.com";
+        private int _tcpClientPort = 80;
+        private int _tcpClientProtocolType = 0;
+        public string tcpClientServer { get { return _tcpClientServer; } set { _tcpClientServer = value; Save(); } }
+        public int tcpClientPort { get { return _tcpClientPort; } set { _tcpClientPort = value; Save(); } }
+        public int tcpClientProtocolType { get { return _tcpClientProtocolType; } set { _tcpClientProtocolType = value; Save(); } }
     }
 }

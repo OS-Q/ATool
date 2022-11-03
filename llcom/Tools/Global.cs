@@ -3,6 +3,7 @@ using LibUsbDotNet.Main;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.IO.Ports;
@@ -11,6 +12,8 @@ using System.Management;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using System.Windows.Forms;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 
 namespace llcom.Tools
 {
@@ -33,6 +36,8 @@ namespace llcom.Tools
                 {
                     Logger.CloseUartLog();
                     Logger.CloseLuaLog();
+                    if(File.Exists(ProfilePath + "lock"))
+                        File.Delete(ProfilePath + "lock");
                 }
             }
         }
@@ -41,8 +46,22 @@ namespace llcom.Tools
         public static Model.Uart uart = new Model.Uart();
 
         //软件根目录
-        public static readonly string AppPath = Path.GetDirectoryName(System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName) + "\\";
-        //配置文件路径
+        private static string _appPath = null;
+        public static string AppPath
+        {
+            get 
+            { 
+                if(_appPath == null)
+                {
+                    _appPath = Path.GetDirectoryName(System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName);
+                    if(!_appPath.EndsWith("\\"))
+                        _appPath = _appPath + "\\";
+                }
+                return _appPath; 
+            }
+        }
+
+        //配置文件路径（普通exe时，会被替换为AppPath）
         public static string ProfilePath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + @"\llcom\";
 
         /// <summary>
@@ -77,18 +96,102 @@ namespace llcom.Tools
         }
 
         /// <summary>
+        /// 是否上报bug？低版本.net框架的上报行为将被限制
+        /// </summary>
+        public static bool ReportBug { get; set; } = true;
+
+        /// <summary>
+        /// 是否有新版本？
+        /// </summary>
+        public static bool HasNewVersion { get; set; } = false;
+
+
+        /// <summary>
+        /// 更换软件标题栏文字
+        /// </summary>
+        public static event EventHandler<string> ChangeTitleEvent;
+        public static void ChangeTitle(string s) => ChangeTitleEvent?.Invoke(null, s);
+
+        /// <summary>
+        /// 加载配置文件
+        /// </summary>
+        public static void LoadSetting()
+        {
+            if (IsMSIX())
+            {
+                if(Directory.Exists(ProfilePath))
+                {
+                    //已经开过一次了，那就继续用之前的路径
+                }
+                else
+                {
+                    //appdata路径不可靠，用文档路径替代
+                    ProfilePath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) + "\\llcom\\";
+                }
+            }
+            else
+            {
+                ProfilePath = AppPath;//普通exe时，直接用软件路径
+            }
+            //配置文件
+            if (File.Exists(ProfilePath + "settings.json"))
+            {
+                try
+                {
+                    //cost 309ms
+                    setting = JsonConvert.DeserializeObject<Model.Settings>(File.ReadAllText(ProfilePath + "settings.json"));
+                    setting.SentCount = 0;
+                    setting.ReceivedCount = 0;
+                }
+                catch
+                {
+                    MessageBox.Show($"配置文件加载失败！\r\n" +
+                        $"如果是配置文件损坏，可前往{ProfilePath}settings.json.bakup查找备份文件\r\n" +
+                        $"并使用该文件替换{ProfilePath}settings.json文件恢复配置");
+                    Environment.Exit(1);
+                }
+            }
+            else
+            {
+                setting = new Model.Settings();
+            }
+        }
+
+        /// <summary>
         /// 软件打开后，所有东西的初始化流程
         /// </summary>
         public static void Initial()
         {
+            //检查.net版本
+            var currentVersion = Walterlv.NdpInfo.GetCurrentVersionName();
+            try
+            {
+                if (currentVersion.StartsWith("4."))
+                {
+                    var sv = int.Parse(currentVersion.Substring(2,1));
+                    if(sv < 6)
+                        throw new Exception();
+                }
+                else
+                {
+                    throw new Exception();
+                }
+            }
+            catch
+            {
+                MessageBox.Show($"本软件仅支持.net framework 4.6.2以上版本，该计算机上的最高版本为{currentVersion}\r\n" +
+                    $"你可以选择继续使用，但若运行途中遇到bug，将不会上报给开发者。\r\n" +
+                    $"建议升级到最新.net framework版本");
+                ReportBug = false;
+            }
             //C:\Users\chenx\AppData\Local\Temp\7zO05433053\user_script_run
-            if(AppPath.ToUpper().Contains(@"\APPDATA\LOCAL\TEMP\"))
+            if (AppPath.ToUpper().Contains(@"\APPDATA\LOCAL\TEMP\"))
             {
                 System.Windows.MessageBox.Show("请勿在压缩包内直接打开本软件。");
                 Environment.Exit(1);
             }
 
-            if(IsMSIX())//商店软件的文件路径改一下
+            if(IsMSIX())//商店软件的文件路径需要手动新建文件夹
             {
                 if (!Directory.Exists(ProfilePath))
                 {
@@ -98,18 +201,24 @@ namespace llcom.Tools
                 if (Directory.Exists(ProfilePath + "core_script"))
                     Directory.Delete(ProfilePath + "core_script", true);
             }
-            else
-            {
-                ProfilePath = AppPath;//普通exe时，直接用软件路径
-            }
 
+            //检测多开
+            string processName = Process.GetCurrentProcess().ProcessName;
+            Process[] processes = Process.GetProcessesByName(processName);
+            //如果该数组长度大于1，说明多次运行
+            if (processes.Length > 1 && File.Exists(ProfilePath + "lock"))
+            {
+                MessageBox.Show("不支持同文件夹多开！\r\n如需多开，请在多个文件夹分别存放llcom.exe后，分别运行。");
+                Environment.Exit(1);
+            }
+            File.Create(ProfilePath + "lock").Close();
             try
             {
                 if (!Directory.Exists(ProfilePath+"core_script"))
                 {
                     Directory.CreateDirectory(ProfilePath+"core_script");
                 }
-                CreateFile("DefaultFiles/core_script/head.lua", ProfilePath+"core_script/head.lua", false);
+                CreateFile("DefaultFiles/core_script/head.lua", ProfilePath+"core_script/head.lua", true);
                 CreateFile("DefaultFiles/core_script/JSON.lua", ProfilePath+"core_script/JSON.lua", false);
                 CreateFile("DefaultFiles/core_script/log.lua", ProfilePath+"core_script/log.lua", false);
                 CreateFile("DefaultFiles/core_script/once.lua", ProfilePath+"core_script/once.lua", true);
@@ -138,13 +247,20 @@ namespace llcom.Tools
                     CreateFile("DefaultFiles/user_script_send_convert/GPS NMEA.lua", ProfilePath+"user_script_send_convert/GPS NMEA.lua");
                     CreateFile("DefaultFiles/user_script_send_convert/加上换行回车.lua", ProfilePath+"user_script_send_convert/加上换行回车.lua");
                     CreateFile("DefaultFiles/user_script_send_convert/解析换行回车的转义字符.lua", ProfilePath+"user_script_send_convert/解析换行回车的转义字符.lua");
-                    CreateFile("DefaultFiles/user_script_send_convert/默认.lua", ProfilePath+"user_script_send_convert/默认.lua");
+                    CreateFile("DefaultFiles/user_script_send_convert/default.lua", ProfilePath+ "user_script_send_convert/default.lua");
                 }
                 if (!Directory.Exists(ProfilePath + "user_script_recv_convert"))
                 {
                     Directory.CreateDirectory(ProfilePath + "user_script_recv_convert");
-                    CreateFile("DefaultFiles/user_script_send_convert/默认.lua", ProfilePath + "user_script_recv_convert/默认.lua");
                 }
+                if (!File.Exists(ProfilePath + "user_script_recv_convert/default.lua"))
+                    CreateFile("DefaultFiles/user_script_recv_convert/default.lua", ProfilePath + "user_script_recv_convert/default.lua");
+                if (!File.Exists(ProfilePath + "user_script_recv_convert/绘制曲线.lua"))
+                    CreateFile("DefaultFiles/user_script_recv_convert/绘制曲线.lua", ProfilePath + "user_script_recv_convert/绘制曲线.lua");
+                if (!File.Exists(ProfilePath + "user_scrispt_recv_convert/绘制曲线-多条.lua"))
+                    CreateFile("DefaultFiles/user_script_recv_convert/绘制曲线-多条.lua", ProfilePath + "user_script_recv_convert/绘制曲线-多条.lua");
+                if (!File.Exists(ProfilePath + "user_script_recv_convert/绘制曲线-解析结构体.lua"))
+                    CreateFile("DefaultFiles/user_script_recv_convert/绘制曲线-解析结构体.lua", ProfilePath + "user_script_recv_convert/绘制曲线-解析结构体.lua");
 
                 CreateFile("DefaultFiles/LICENSE", ProfilePath+"LICENSE", false);
                 CreateFile("DefaultFiles/反馈网址.txt", ProfilePath+"反馈网址.txt", false);
@@ -155,19 +271,15 @@ namespace llcom.Tools
                 Environment.Exit(1);
             }
 
-            //配置文件
-            if(File.Exists(ProfilePath+"settings.json"))
-            {
-                //cost 309ms
-                setting = JsonConvert.DeserializeObject<Model.Settings>(File.ReadAllText(ProfilePath+"settings.json"));
-                setting.SentCount = 0;
-                setting.ReceivedCount = 0;
-            }
-            else
-            {
-                setting = new Model.Settings();
-            }
+            //加载配置文件改成单独拎出来了
 
+            //备份一下文件好了（心理安慰）
+            if (File.Exists(ProfilePath + "settings.json"))
+            {
+                if (File.Exists(ProfilePath + "settings.json.bakup"))
+                    File.Delete(ProfilePath + "settings.json.bakup");
+                File.Copy(ProfilePath + "settings.json", ProfilePath + "settings.json.bakup");
+            }
 
             uart.serial.BaudRate = setting.baudRate;
             uart.serial.Parity = (Parity)setting.parity;

@@ -34,7 +34,8 @@ namespace llcom.Pages
             InitializeComponent();
         }
 
-        public WebSocket ws = new WebSocket("ws://netlab.luatos.com/ws/netlab");
+        public WebSocket ws = new WebSocket("wss://netlab.luatos.com/ws/netlab");
+        public WebSocket wsV6 = new WebSocket("wss://netlab.luatos.org/ws/netlab");
         ObservableCollection<string> clients = new ObservableCollection<string>();
 
         /// <summary>
@@ -43,6 +44,7 @@ namespace llcom.Pages
         public bool IsConnected { get; set; } = false;
         public bool HexMode { get; set; } = false;
         public string Address { get; set; } = "loading...";
+        public string AddressV6 { get; set; } = "loading...";
         public string ConnectionType { get; set; } = "unknow";
 
         private static bool loaded = false;
@@ -59,9 +61,17 @@ namespace llcom.Pages
             heartbeat.Interval = 30000;
             heartbeat.AutoReset = true;
             heartbeat.Elapsed += (ss, ee) => { try { if (IsConnected) ws.Send("{}"); } catch { } };
+
+            Timer heartbeatV6 = new Timer();
+            heartbeatV6.Interval = 30000;
+            heartbeatV6.AutoReset = true;
+            heartbeatV6.Elapsed += (ss, ee) => { try { if (IsConnected) wsV6.Send("{}"); } catch { } };
+
             //ws事件
-            ws.OnOpen += (ss, ee) => { IsConnected = true; heartbeat.Start(); clients.Clear();};
-            ws.OnClose += (ss, ee) => { IsConnected = false; heartbeat.Stop(); clients.Clear();};
+            ws.OnOpen += (ss, ee) => { IsConnected = true; heartbeat.Start(); this.Dispatcher.Invoke(() => { clients.Clear(); }); };
+            wsV6.OnOpen += (ss, ee) => { IsConnected = true; heartbeatV6.Start(); this.Dispatcher.Invoke(() => { clients.Clear(); }); };
+            ws.OnClose += (ss, ee) => { IsConnected = false; heartbeat.Stop(); this.Dispatcher.Invoke(() => { clients.Clear(); }); };
+            wsV6.OnClose += (ss, ee) => { IsConnected = false; heartbeatV6.Stop(); this.Dispatcher.Invoke(() => { clients.Clear(); }); };
             ws.OnMessage += (ss, ee) => {
                 Debug.WriteLine(!ee.IsPing ? ee.Data : "ping");
                 if (ee.IsPing)
@@ -72,14 +82,13 @@ namespace llcom.Pages
                     switch ((string)o["action"])
                     {
                         case "port":
-                            var host = Dns.GetHostEntry("netlab.vue2.cn");
-                            string ip = host.AddressList.Length > 0 ? host.AddressList[0].ToString() : "netlab.vue2.cn";
-                            Address = $"{ConnectionType}://{ip}:{o["port"]}";
-                            ShowData($"Created a {ConnectionType} server.");
+                            Address = $"{ConnectionType}://112.125.89.8:{o["port"]}";
+                            AddressV6 = "not suppoer ipv6";
+                            ShowData($"📢 Created a {ConnectionType} server.");
                             break;
                         case "client":
                         case "connected":
-                            ShowData($"[{o["client"]}]{o["addr"]} connected.");
+                            ShowData($"✔ [{o["client"]}]{o["addr"]} connected.");
                             this.Dispatcher.Invoke(new Action(delegate
                             {
                                 clients.Add((string)o["client"]);
@@ -88,7 +97,7 @@ namespace llcom.Pages
                             }));
                             break;
                         case "closed":
-                            ShowData($"[{o["client"]}] disconnected.");
+                            ShowData($"❌ [{o["client"]}] disconnected.");
                             this.Dispatcher.Invoke(new Action(delegate
                             {
                                 clients.Remove((string)o["client"]);
@@ -98,12 +107,11 @@ namespace llcom.Pages
                             break;
                         case "data":
                             string data = (string)o["data"];
-                            if ((bool)o["hex"] && (!HexMode))
-                                data = Global.Hex2String(data);
-                            ShowData($"[{o["client"]}] ← {(HexMode ? "[HEX]" : "")}{data}");
+                            ShowData($" → receive from [{o["client"]}]",
+                                        (bool)o["hex"] ? Global.Hex2Byte(data) : Global.GetEncoding().GetBytes(data));
                             break;
                         case "error":
-                            ShowData($"[error]{o["msg"]}");
+                            ShowData($"❔ error:{o["msg"]}");
                             break;
                         default:
                             break;
@@ -114,32 +122,119 @@ namespace llcom.Pages
                     //先不管错误
                 }
             };
+            wsV6.OnMessage += (ss, ee) => {
+                Debug.WriteLine(!ee.IsPing ? ee.Data : "ping");
+                if (ee.IsPing)
+                    return;
+                try
+                {
+                    JObject o = (JObject)JsonConvert.DeserializeObject(ee.Data);
+                    switch ((string)o["action"])
+                    {
+                        case "port":
+                            Address = $"{ConnectionType}://152.70.80.204:{o["port"]}";
+                            AddressV6 = $"{ConnectionType}://[2603:c023:1:5fcc:c028:8ed:49a7:6e08]:{o["port"]}";
+                            ShowData($"📢 Created a {ConnectionType} server.");
+                            break;
+                        case "client":
+                        case "connected":
+                            ShowData($"✔ [{o["client"]}]{o["addr"]} connected.");
+                            this.Dispatcher.Invoke(new Action(delegate
+                            {
+                                clients.Add((string)o["client"]);
+                                if (ClientList.Text.Length == 0)
+                                    ClientList.Text = (string)o["client"];
+                            }));
+                            break;
+                        case "closed":
+                            ShowData($"❌ [{o["client"]}] disconnected.");
+                            this.Dispatcher.Invoke(new Action(delegate
+                            {
+                                clients.Remove((string)o["client"]);
+                                if (ClientList.Text.Length == 0 && clients.Count > 0)
+                                    ClientList.Text = clients[0];
+                            }));
+                            break;
+                        case "data":
+                            string data = (string)o["data"];
+                            ShowData($" → receive from [{o["client"]}]",
+                                        (bool)o["hex"] ? Global.Hex2Byte(data) : Global.GetEncoding().GetBytes(data));
+                            break;
+                        case "error":
+                            ShowData($"❔ error:{o["msg"]}");
+                            break;
+                        default:
+                            break;
+                    }
+                }
+                catch
+                {
+                    //先不管错误
+                }
+            };
+
+            ws.OnError += (ss, ee) =>
+            {
+                ShowData($"📢 Create failed");
+            };
+            wsV6.OnError += (ss, ee) =>
+            {
+                ShowData($"📢 Create failed");
+            };
         }
 
-        private void ShowData(string s)
+
+        private void ShowData(string title, byte[] data = null, bool send = false)
         {
             this.Dispatcher.Invoke(new Action(delegate
             {
-                DataTextBox.AppendText($"[{DateTime.Now.ToString("HH:mm:ss.ffff")}]{s}\r\n");
-                DataTextBox.ScrollToEnd();
+                Tools.Logger.ShowDataRaw(new Tools.DataShowRaw
+                {
+                    title = $"socket server: {title}",
+                    data = data ?? new byte[0],
+                    color = send ? Brushes.DarkRed : Brushes.DarkGreen,
+                });
             }));
         }
 
-        private void ConnectWebSocket(string ctype,string stype = null)
+        public bool connecting { get; set; } = false;
+        private async void ConnectWebSocket(string ctype,string stype = null)
         {
-            try
+            if (connecting)
+                return;
+            connecting = true;
+            ShowData($"📢 Server is creating...");
+            await Task.Run(() =>
             {
-                ConnectionType = ctype;
-                ws.Connect();
-                ws.Send(JsonConvert.SerializeObject(new {
-                    action = "newp",
-                    type = stype ?? ctype,
-                }));
-            }
-            catch(Exception e)
-            {
-                MessageBox.Show(e.Message);
-            }
+                try
+                {
+                    if (ctype == "tcpv6")
+                    {
+                        ConnectionType = "tcp";
+                        wsV6.Connect();
+                        wsV6.Send(JsonConvert.SerializeObject(new
+                        {
+                            action = "newp",
+                            type = "tcp",
+                        }));
+                    }
+                    else
+                    {
+                        ConnectionType = ctype;
+                        ws.Connect();
+                        ws.Send(JsonConvert.SerializeObject(new
+                        {
+                            action = "newp",
+                            type = stype ?? ctype,
+                        }));
+                    }
+                }
+                catch (Exception e)
+                {
+                    //ShowData($"📢 Create failed, {e.Message}");
+                }
+            });
+            connecting = false;
         }
 
         private void CreateTcpButton_Click(object sender, RoutedEventArgs e)
@@ -161,7 +256,10 @@ namespace llcom.Pages
         {
             try
             {
-                ws.Close();
+                (ws.IsAlive ? ws : wsV6).Close();
+                ShowData($"📢 Server closed.");
+                Address = "loading...";
+                AddressV6 = "loading...";
             }
             catch (Exception ee)
             {
@@ -175,24 +273,21 @@ namespace llcom.Pages
                 return;
             try
             {
-                ws.Send(JsonConvert.SerializeObject(new
+                (ws.IsAlive ? ws : wsV6).Send(JsonConvert.SerializeObject(new
                 {
                     action = "sendc",
                     data = toSendDataTextBox.Text,
                     hex = HexMode,
                     client = ClientList.Text,
                 }));
-                ShowData($"[{ClientList.Text}] → {(HexMode ? "[HEX]" : "")}{toSendDataTextBox.Text}");
+                ShowData($" ← send to [{ClientList.Text}]", 
+                    HexMode ? Global.Hex2Byte(toSendDataTextBox.Text) : Global.GetEncoding().GetBytes(toSendDataTextBox.Text),
+                    true);
             }
             catch (Exception ee)
             {
                 MessageBox.Show(ee.Message);
             }
-        }
-
-        private void ClearDataButton_Click(object sender, RoutedEventArgs e)
-        {
-            DataTextBox.Clear();
         }
 
         private void KickClientButton_Click(object sender, RoutedEventArgs e)
@@ -201,7 +296,7 @@ namespace llcom.Pages
                 return;
             try
             {
-                ws.Send(JsonConvert.SerializeObject(new
+                (ws.IsAlive ? ws : wsV6).Send(JsonConvert.SerializeObject(new
                 {
                     action = "closec",
                     client = ClientList.Text,
@@ -213,5 +308,9 @@ namespace llcom.Pages
             }
         }
 
+        private void CreateTcpIpv6Button_Click(object sender, RoutedEventArgs e)
+        {
+            ConnectWebSocket("tcpv6");
+        }
     }
 }

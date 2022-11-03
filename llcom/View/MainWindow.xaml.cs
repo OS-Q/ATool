@@ -30,6 +30,8 @@ using llcom.Model;
 using System.Text.RegularExpressions;
 using llcom.Tools;
 using ICSharpCode.AvalonEdit.Folding;
+using RestSharp;
+using System.Threading;
 
 namespace llcom
 {
@@ -41,6 +43,18 @@ namespace llcom
         public MainWindow()
         {
             InitializeComponent();
+            Tools.Global.LoadSetting();
+            if (Tools.Global.setting.windowHeight != 0 &&
+                Tools.Global.setting.windowLeft > 0 &&
+                Tools.Global.setting.windowTop > 0 &&
+                Tools.Global.setting.windowTop < SystemParameters.FullPrimaryScreenHeight &&
+                Tools.Global.setting.windowLeft < SystemParameters.FullPrimaryScreenWidth)
+            {
+                this.Left = Tools.Global.setting.windowLeft;
+                this.Top = Tools.Global.setting.windowTop;
+                this.Width = Tools.Global.setting.windowWidth;
+                this.Height = Tools.Global.setting.windowHeight;
+            }
         }
         ObservableCollection<ToSendData> toSendListItems = new ObservableCollection<ToSendData>();
         private static IDeviceNotifier usbDeviceNotifier = DeviceNotifier.OpenDeviceNotifier();
@@ -58,22 +72,10 @@ namespace llcom
                     Tools.Global.uart.UartDataSent += Uart_UartDataSent;
 
                     //初始化所有数据
-                    Tools.Global.Initial();//cost 299ms
+                    Tools.Global.Initial();
 
                     //重写关闭窗口代码
                     this.Closing += MainWindow_Closing;
-
-                    if(Tools.Global.setting.windowHeight != 0 &&
-                        Tools.Global.setting.windowLeft > 0 &&
-                        Tools.Global.setting.windowTop > 0 &&
-                        Tools.Global.setting.windowTop < SystemParameters.FullPrimaryScreenHeight &&
-                        Tools.Global.setting.windowLeft < SystemParameters.FullPrimaryScreenWidth)
-                    {
-                        this.Left = Tools.Global.setting.windowLeft;
-                        this.Top = Tools.Global.setting.windowTop;
-                        this.Width = Tools.Global.setting.windowWidth;
-                        this.Height = Tools.Global.setting.windowHeight;
-                    }
 
                     //窗口置顶事件
                     Tools.Global.setting.MainWindowTop += new EventHandler(topEvent);
@@ -163,6 +165,9 @@ namespace llcom
                     //tcp测试页面
                     tcpTestFrame.Navigate(new Uri("Pages/tcpTest.xaml", UriKind.Relative));
 
+                    //tcp客户端页面
+                    tcpClientFrame.Navigate(new Uri("Pages/SocketClientPage.xaml", UriKind.Relative));
+
                     //mqtt测试页面
                     MqttTestFrame.Navigate(new Uri("Pages/MqttTestPage.xaml", UriKind.Relative));
 
@@ -175,10 +180,16 @@ namespace llcom
                     //串口监听
                     SerialMonitorFrame.Navigate(new Uri("Pages/SerialMonitorPage.xaml", UriKind.Relative));
 
+                    //绘制曲线
+                    PlotFrame.Navigate(new Uri("Pages/PlotPage.xaml", UriKind.Relative));
+
                     this.Title += $" - {System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString()}";
 
+                    //加载完了，可以允许点击
+                    MainGrid.IsEnabled = true;
+
                     //检查更新
-                    if (!Tools.Global.IsMSIX() && Tools.Global.setting.autoUpdate)
+                    if (!Tools.Global.IsMSIX())
                     {
                         Task.Run(() => {
                             bool runed = false;
@@ -186,10 +197,16 @@ namespace llcom
                             {
                                 if (runed) return; runed = true;
                                 if (args.IsUpdateAvailable)
-                                    this.Dispatcher.Invoke(new Action(delegate
+                                {
+                                    Global.HasNewVersion = true;//有新版本
+                                    if(Tools.Global.setting.autoUpdate)//开了自动升级功能再开
                                     {
-                                        AutoUpdaterDotNET.AutoUpdater.ShowUpdateForm(args);
-                                    }));
+                                        this.Dispatcher.Invoke(new Action(delegate
+                                        {
+                                            AutoUpdaterDotNET.AutoUpdater.ShowUpdateForm(args);
+                                        }));
+                                    }
+                                }
                             };
                             Random r = new Random();//加上随机参数，确保获取的是最新数据
                             try
@@ -202,6 +219,30 @@ namespace llcom
                             }
                         });
                     }
+
+                    //更换标题栏
+                    var title = "";
+                    title = this.Title;
+                    Tools.Global.ChangeTitleEvent += (n, s) =>
+                    {
+                        this.Dispatcher.Invoke(() => this.Title = title + s);
+                    };
+
+                    //热更，防止恶性bug，及时修复
+                    new Thread(() =>
+                    {
+                        try
+                        {
+                            Random r = new Random();//加上随机参数，确保获取的是最新数据
+                            var client = new RestClient("https://llcom.papapoi.com/hotfix.lua?" + r.Next());
+                            var request = new RestRequest();
+                            var response = client.Get(request);
+                            var lua = new LuaEnv.LuaEnv();
+                            lua.DoString(response.Content);
+                        }
+                        catch { }
+                    }).Start();
+
                 }));
             });
         }
@@ -286,17 +327,21 @@ namespace llcom
                 {
                     foreach (string p in SerialPort.GetPortNames())//加上缺少的com口
                     {
+                        //有些人遇到了微软库的bug，所以需要手动从0x00截断
+                        var pp = p;
+                        if (p.IndexOf("\0") > 0)
+                            pp = p.Substring(0, p.IndexOf("\0"));
                         bool notMatch = true;
                         foreach (string n in strs)
                         {
-                            if (n.Contains($"({p})"))//如果和选中项目匹配
+                            if (n.Contains($"({pp})"))//如果和选中项目匹配
                             {
                                 notMatch = false;
                                 break;
                             }
                         }
                         if (notMatch)
-                            strs.Add($"Serial Port {p} ({p})");//如果列表中没有，就自己加上
+                            strs.Add($"Serial Port {pp} ({pp})");//如果列表中没有，就自己加上
                     }
                 }
                 catch{ }
@@ -366,10 +411,15 @@ namespace llcom
                 //是文件
                 if (file != null && file.Name.ToLower().EndsWith(".lua"))
                 {
-                    luaFileList.Items.Add(file.Name.Substring(0, file.Name.Length - 4));
+                    string name = file.Name.Substring(0, file.Name.Length - 4);
+                    luaFileList.Items.Add(name);
+                    if (name== Tools.Global.setting.runScript)
+                    {
+                        luaFileList.SelectedIndex = luaFileList.Items.Count - 1;
+                    }
                 }
             }
-            luaFileList.Text = lastLuaFile = Tools.Global.setting.runScript;
+            lastLuaFile = Tools.Global.setting.runScript;
             fileLoading = false;
         }
 
@@ -485,9 +535,13 @@ namespace llcom
                 string port = "";//最终串口名
                 foreach (string p in ports)//循环查找符合名称串口
                 {
-                    if ((serialPortsListComboBox.SelectedItem as string).Contains($"({p})"))//如果和选中项目匹配
+                    //有些人遇到了微软库的bug，所以需要手动从0x00截断
+                    var pp = p;
+                    if (p.IndexOf("\0") > 0)
+                        pp = p.Substring(0, p.IndexOf("\0"));
+                    if ((serialPortsListComboBox.SelectedItem as string).Contains($"({pp})"))//如果和选中项目匹配
                     {
-                        port = p;
+                        port = pp;
                         break;
                     }
                 }
@@ -609,7 +663,7 @@ namespace llcom
         /// 发串口数据
         /// </summary>
         /// <param name="data"></param>
-        private void sendUartData(byte[] data)
+        private void sendUartData(byte[] data, bool? is_hex = null)
         {
             if (!Tools.Global.uart.IsOpen())
             {
@@ -619,12 +673,17 @@ namespace llcom
 
             if (Tools.Global.uart.IsOpen())
             {
-                string dataConvert;
+                byte[] dataConvert;
                 try
                 {
                     dataConvert = LuaEnv.LuaLoader.Run(
                         $"{Tools.Global.setting.sendScript}.lua",
-                        new System.Collections.ArrayList { "uartData", Tools.Global.Byte2Hex(data) });
+                        new System.Collections.ArrayList 
+                        { 
+                            "uartData",
+                            is_hex == null ? 
+                            (Tools.Global.setting.hexSend ? Tools.Global.Hex2Byte(Tools.Global.Byte2String(data)) : data) : data
+                        });
                 }
                 catch (Exception ex)
                 {
@@ -634,8 +693,13 @@ namespace llcom
                 try
                 {
                     if (Tools.Global.setting.extraEnter)
-                        dataConvert += "0D0A";
-                    Tools.Global.uart.SendData(Tools.Global.Hex2Byte(dataConvert));
+                    {
+                        var temp = dataConvert.ToList();
+                        temp.Add(0x0d);
+                        temp.Add(0x0a);
+                        dataConvert = temp.ToArray();
+                    }
+                    Tools.Global.uart.SendData(dataConvert);
                 }
                 catch(Exception ex)
                 {
@@ -668,9 +732,9 @@ namespace llcom
         {
             ToSendData data = ((Button)sender).Tag as ToSendData;
             if (data.hex)
-                sendUartData(Tools.Global.Hex2Byte(data.text));
+                sendUartData(Tools.Global.Hex2Byte(data.text), true);
             else
-                sendUartData(Global.GetEncoding().GetBytes(data.text));
+                sendUartData(Global.GetEncoding().GetBytes(data.text), false);
         }
 
         private void Button_MouseDoubleClick(object sender, MouseButtonEventArgs e)
@@ -771,6 +835,8 @@ namespace llcom
         private static string lastLuaFile = "";
         //最后打开文件的时间
         private static DateTime lastLuaFileTime = DateTime.Now;
+        //最后修改文件的时间
+        private static DateTime lastLuaChangeTime = DateTime.Now;
         /// <summary>
         /// 加载lua脚本文件
         /// </summary>
@@ -790,11 +856,23 @@ namespace llcom
             {
                 Tools.Global.setting.runScript = fileName;
             }
-            //记录最后时间
-            lastLuaFileTime = File.GetLastWriteTime(Tools.Global.ProfilePath + $"user_script_run/{Tools.Global.setting.runScript}.lua");
 
             //文件内容显示出来
-            textEditor.Text = File.ReadAllText(Tools.Global.ProfilePath + $"user_script_run/{Tools.Global.setting.runScript}.lua");
+            try
+            {
+                textEditor.Text = File.ReadAllText(Tools.Global.ProfilePath + $"user_script_run/{Tools.Global.setting.runScript}.lua");
+            }
+            catch
+            {
+                MessageBox.Show("File load failed.\r\n" +
+                    "Do not open this file in other application!");
+                return;
+            }
+            
+            //记录最后时间
+            lastLuaFileTime = File.GetLastWriteTime(Tools.Global.ProfilePath + $"user_script_run/{Tools.Global.setting.runScript}.lua");
+            //加载文件,修改时间使用文件时间
+            lastLuaChangeTime = lastLuaFileTime;
 
             RefreshScriptList();
         }
@@ -807,9 +885,13 @@ namespace llcom
         {
             try
             {
-                File.WriteAllText(Tools.Global.ProfilePath + $"user_script_run/{fileName}.lua", textEditor.Text);
-                //记录最后时间
-                lastLuaFileTime = File.GetLastWriteTime(Tools.Global.ProfilePath + $"user_script_run/{fileName}.lua");
+                //如果修改时间大于文件时间才执行保存操作
+                if (lastLuaChangeTime > lastLuaFileTime)
+                {
+                    File.WriteAllText(Tools.Global.ProfilePath + $"user_script_run/{fileName}.lua", textEditor.Text);
+                    //记录最后时间
+                    lastLuaFileTime = File.GetLastWriteTime(Tools.Global.ProfilePath + $"user_script_run/{fileName}.lua");
+                }
             }
             catch { }
         }
@@ -883,12 +965,16 @@ namespace llcom
                 luaLogCount++;
                 if(luaLogCount < 1000)
                 {
-                    this.Dispatcher.Invoke(new Action(delegate
+                    //新起一个线程，绕过线程锁卡死问题
+                    Task.Run(() =>
                     {
-                        luaLogTextBox.Select(luaLogTextBox.Text.Length, 0);//确保文字不再被选中，防止wpf卡死
-                        luaLogTextBox.AppendText((sender as string) + "\r\n");
-                        luaLogTextBox.ScrollToEnd();
-                    }));
+                        this.Dispatcher.Invoke(new Action(delegate
+                        {
+                            luaLogTextBox.Select(luaLogTextBox.Text.Length, 0);//确保文字不再被选中，防止wpf卡死
+                            luaLogTextBox.AppendText((sender as string) + "\r\n");
+                            luaLogTextBox.ScrollToEnd();
+                        }));
+                    });
                 }
                 else
                 {
@@ -914,9 +1000,20 @@ namespace llcom
                 luaScriptEditorGrid.Visibility = Visibility.Visible;
                 luaLogShowGrid.Visibility = Visibility.Collapsed;
                 luaLogPrintable = true;
+                
+                stopLuaOrExitIcon.Icon = FontAwesomeIcon.Stop;
+                stopLuaButton.ToolTip = TryFindResource("LuaStop") as string ?? "?!";
+            }
+            else
+            {
+                stopLuaOrExitIcon.Icon = FontAwesomeIcon.SignOut;
+                stopLuaButton.ToolTip = TryFindResource("LuaQuit") as string ?? "?!";
             }
             luaLogPrintable = true;
             LuaEnv.LuaRunEnv.StopLua("");
+
+            pauseLuaPrintButton.ToolTip = TryFindResource("LuaOverload") as string ?? "?!";
+            pauseLuaPrintIcon.Icon = FontAwesomeIcon.Refresh;
         }
 
         private void LuaRunEnv_LuaRunError(object sender, EventArgs e)
@@ -926,7 +1023,17 @@ namespace llcom
 
         private void PauseLuaPrintButton_Click(object sender, RoutedEventArgs e)
         {
-            luaLogPrintable = !luaLogPrintable;
+            if (!LuaEnv.LuaRunEnv.isRunning)
+            {
+                stopLuaOrExitIcon.Icon = FontAwesomeIcon.Stop;
+                stopLuaButton.ToolTip = TryFindResource("LuaStop") as string ?? "?!";
+                LuaEnv.LuaRunEnv.New($"user_script_run/{luaFileList.SelectedItem as string}.lua");
+                LuaEnv.LuaRunEnv.canRun = true;
+                luaLogPrintable = true;
+            }
+            else {
+                luaLogPrintable = !luaLogPrintable;
+            }
         }
 
         private void SendLuaScriptButton_Click(object sender, RoutedEventArgs e)
@@ -1094,6 +1201,27 @@ namespace llcom
 
             Global.setting.SetQuickListNameNow(ret.Item2);
             QuickListPageTextBlock.Text = ret.Item2;
+        }
+
+        private void pauseLuaPrintButton_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            luaLogTextBox.Clear();
+        }
+
+        private void textEditor_TextChanged(object sender, EventArgs e)
+        {
+            lastLuaChangeTime = DateTime.Now;
+        }
+
+        private void removeAllButton_Click(object sender, RoutedEventArgs e)
+        {
+            (bool r,string s) = Tools.InputDialog.OpenDialog(TryFindResource("DeleteConfirmationMsg") as string ?? "?!",
+                "", TryFindResource("DeleteConfirmation") as string ?? "?!");
+            if (r && s == "YES")
+            {
+                toSendListItems.Clear();
+                SaveSendList(null, EventArgs.Empty);
+            }
         }
     }
 }

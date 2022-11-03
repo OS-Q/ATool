@@ -42,13 +42,13 @@ namespace llcom.LuaEnv
         /// 发送串口数据
         /// </summary>
         /// <returns>是否成功</returns>
-        public static bool SendUartData(string data)
+        public static bool SendUartData(byte[] data)
         {
             if (Tools.Global.uart.IsOpen())
             {
                 try
                 {
-                    Tools.Global.uart.SendData(Tools.Global.Hex2Byte(data));
+                    Tools.Global.uart.SendData(data);
                     return true;
                 }
                 catch
@@ -85,6 +85,18 @@ namespace llcom.LuaEnv
             });
             returnValue = ret.Item2;
             return ret.Item1;
+        }
+
+
+        public static event EventHandler<Model.LinePlotPoint> LinePlotAdd;
+        /// <summary>
+        /// 画点
+        /// </summary>
+        /// <param name="n">值</param>
+        /// <param name="l">哪根线</param>
+        public static void AddPoint(double n, int l)
+        {
+            LinePlotAdd?.Invoke(null, new Model.LinePlotPoint { N = n, Line = l });
         }
     }
 }

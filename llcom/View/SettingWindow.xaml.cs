@@ -46,7 +46,7 @@ namespace llcom
             //检查文件是否存在
             if (!File.Exists(Tools.Global.ProfilePath + $"user_script_send_convert/{fileName}.lua"))
             {
-                Tools.Global.setting.sendScript = "默认";
+                Tools.Global.setting.sendScript = "default";
                 if (!File.Exists(Tools.Global.ProfilePath + $"user_script_send_convert/{Tools.Global.setting.sendScript}.lua"))
                 {
                     File.Create(Tools.Global.ProfilePath + $"user_script_send_convert/{Tools.Global.setting.sendScript}.lua").Close();
@@ -69,12 +69,17 @@ namespace llcom
             {
                 FileInfo file = luaFiles[i] as FileInfo;
                 //是文件
-                if (file != null && file.Name.IndexOf(".lua") == file.Name.Length - (".lua").Length)
+                if (file != null && file.Name.EndsWith(".lua"))
                 {
-                    luaFileList.Items.Add(file.Name.Substring(0, file.Name.Length - 4));
+                    string name = file.Name.Substring(0, file.Name.Length - 4); ;
+                    luaFileList.Items.Add(name);
+                    if (name == Tools.Global.setting.sendScript)
+                    {
+                        luaFileList.SelectedIndex = luaFileList.Items.Count - 1;
+                    }
                 }
             }
-            luaFileList.Text = lastLuaFile = Tools.Global.setting.sendScript;
+            lastLuaFile = Tools.Global.setting.sendScript;
             fileLoading = false;
         }
         private void loadLuaFileRev(string fileName)
@@ -82,7 +87,7 @@ namespace llcom
             //检查文件是否存在
             if (!File.Exists(Tools.Global.ProfilePath + $"user_script_recv_convert/{fileName}.lua"))
             {
-                Tools.Global.setting.recvScript = "默认";
+                Tools.Global.setting.recvScript = "default";
                 if (!File.Exists(Tools.Global.ProfilePath + $"user_script_recv_convert/{Tools.Global.setting.recvScript}.lua"))
                 {
                     File.Create(Tools.Global.ProfilePath + $"user_script_recv_convert/{Tools.Global.setting.recvScript}.lua").Close();
@@ -105,12 +110,17 @@ namespace llcom
             {
                 FileInfo file = luaFiles[i] as FileInfo;
                 //是文件
-                if (file != null && file.Name.IndexOf(".lua") == file.Name.Length - (".lua").Length)
+                 if (file != null && file.Name.EndsWith(".lua"))
                 {
-                    luaFileListRev.Items.Add(file.Name.Substring(0, file.Name.Length - 4));
+                    string name = file.Name.Substring(0, file.Name.Length - 4); ;
+                    luaFileListRev.Items.Add(name);
+                    if (name== Tools.Global.setting.recvScript)
+                    {
+                        luaFileListRev.SelectedIndex = luaFileListRev.Items.Count - 1;
+                    }
                 }
             }
-            luaFileListRev.Text = lastLuaFileRev = Tools.Global.setting.recvScript;
+            lastLuaFileRev = Tools.Global.setting.recvScript;
             fileLoadingRev = false;
         }
 
@@ -141,7 +151,8 @@ namespace llcom
             dataBitsComboBox.SelectedIndex = Tools.Global.setting.dataBits - 5;
             stopBitComboBox.SelectedIndex = Tools.Global.setting.stopBit - 1;
             dataCheckComboBox.SelectedIndex = Tools.Global.setting.parity;
-            showHexComboBox.SelectedIndex = Tools.Global.setting.showHexFormat;
+
+            showHexComboBox.DataContext = Tools.Global.setting;
 
             //快速搜索
             SearchPanel.Install(textEditor.TextArea);
@@ -291,11 +302,11 @@ namespace llcom
             {
                 try
                 {
-                    string r = LuaEnv.LuaLoader.Run($"{luaFileList.SelectedItem as string}.lua",
+                    byte[] r = LuaEnv.LuaLoader.Run($"{luaFileList.SelectedItem as string}.lua",
                                         new System.Collections.ArrayList{"uartData",
-                                           Tools.Global.String2Hex(luaTestTextBox.Text,"")});
-                    MessageBox.Show($"{TryFindResource("SettingLuaRunResult") as string ?? "?!"}\r\nHEX：" + r +
-                        $"\r\n{TryFindResource("SettingLuaRawText") as string ?? "?!"}" + Tools.Global.Hex2String(r));
+                                           Tools.Global.GetEncoding().GetBytes(luaTestTextBox.Text)});
+                    MessageBox.Show($"{TryFindResource("SettingLuaRunResult") as string ?? "?!"}\r\nHEX：" + Tools.Global.Byte2Hex(r) +
+                        $"\r\n{TryFindResource("SettingLuaRawText") as string ?? "?!"}" + Tools.Global.Byte2String(r));
                 }
                 catch(Exception ex)
                 {
@@ -402,16 +413,15 @@ namespace llcom
             {
                 try
                 {
-                    string r = LuaEnv.LuaLoader.Run(
+                    byte[] r = LuaEnv.LuaLoader.Run(
                         $"{luaFileListRev.SelectedItem as string}.lua",
                         new System.Collections.ArrayList{
                             "uartData",
-                            Tools.Global.String2Hex(luaTestTextBoxRev.Text,
-                            "")
+                            Tools.Global.GetEncoding().GetBytes(luaTestTextBoxRev.Text)
                         },
                         "user_script_recv_convert/");
-                    MessageBox.Show($"{TryFindResource("SettingLuaRunResult") as string ?? "?!"}\r\nHEX：" + r +
-                        $"\r\n{TryFindResource("SettingLuaRawText") as string ?? "?!"}" + Tools.Global.Hex2String(r));
+                    MessageBox.Show($"{TryFindResource("SettingLuaRunResult") as string ?? "?!"}\r\nHEX：" + Tools.Global.Byte2Hex(r) +
+                        $"\r\n{TryFindResource("SettingLuaRawText") as string ?? "?!"}" + Tools.Global.Byte2String(r));
                 }
                 catch (Exception ex)
                 {
@@ -430,14 +440,6 @@ namespace llcom
             //自动保存脚本
             if (lastLuaFileRev != "")
                 saveLuaFileRev(lastLuaFileRev);
-        }
-
-        private void showHexComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            if (showHexComboBox.SelectedItem != null)
-            {
-                Tools.Global.setting.showHexFormat = showHexComboBox.SelectedIndex;
-            }
         }
     }
 }

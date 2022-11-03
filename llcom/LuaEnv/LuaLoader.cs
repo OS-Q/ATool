@@ -27,6 +27,8 @@ namespace llcom.LuaEnv
             lua.DoString("apiQuickSendList = CS.llcom.LuaEnv.LuaApis.QuickSendList");
             //输入框
             lua.DoString("apiInputBox = CS.llcom.LuaEnv.LuaApis.InputBox");
+            //加点
+            lua.DoString("apiAddPoint = CS.llcom.LuaEnv.LuaApis.AddPoint");
 
             if (t != "send")
             {
@@ -66,11 +68,11 @@ package.cpath = package.cpath..
         /// <param name="file"></param>
         /// <param name="args"></param>
         /// <returns></returns>
-        public static string Run(string file, ArrayList args = null, string path = "user_script_send_convert/")
+        public static byte[] Run(string file, ArrayList args = null, string path = "user_script_send_convert/")
         {
             //文件不存在
             if (!File.Exists(Tools.Global.ProfilePath + path + file))
-                return "";
+                return new byte[] { };
 
             if (luaRunner == null)
             {
@@ -87,10 +89,11 @@ package.cpath = package.cpath..
                     if (args != null)
                         for (int i = 0; i < args.Count; i += 2)
                         {
-                            luaRunner.Global.SetInPath((string)args[i], args[i + 1].ToString());
+                            luaRunner.Global.SetInPath((string)args[i], args[i + 1]);
                             System.Diagnostics.Debug.WriteLine($"{(string)args[i]},{args[i + 1]}");
                         }
-                    return luaRunner.DoString("return require('core_script.once')()")[0].ToString();
+                    var r = luaRunner.DoString("return require('core_script.once')()")[0].ToString();
+                    return Tools.Global.Hex2Byte(r);
                 }
                 catch (Exception e)
                 {

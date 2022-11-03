@@ -12,7 +12,6 @@
         mc:Ignorable="d"
         Title="{DynamicResource AppTitle}" Height="500" Width="900"
         Loaded="Window_Loaded"
-        WindowStartupLocation="CenterScreen"
         Activated="Window_Activated"
         Deactivated="Window_Deactivated">
     <Window.Style>
@@ -29,7 +28,7 @@
     <Window.CommandBindings>
         <CommandBinding Command="{StaticResource SendUartData}" Executed="SendUartData_Executed"/>
     </Window.CommandBindings>
-    <Grid>
+    <Grid Name="MainGrid" IsEnabled="False">
         <Grid.RowDefinitions>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
@@ -235,7 +234,7 @@
                                 <DataTemplate>
                                     <Grid Margin="0,3,0,0">
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="20"/>
+                                            <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="4*"/>
                                             <ColumnDefinition Width="auto"/>
                                             <ColumnDefinition Width="20"/>
@@ -266,6 +265,7 @@
                             <Button Name="QuickSendImportButton" Content="{DynamicResource QuickSendImport}" Margin="3" Click="QuickSendImportButton_Click"/>
                             <Button Name="QuickSendExportButton" Content="{DynamicResource QuickSendExport}" Grid.Column="1" Margin="3" Click="QuickSendExportButton_Click"/>
                         </Grid>
+                        <Button Name="removeAllButton" Content="{DynamicResource QuickSendRemoveAll}" Margin="3,3,3,5" Click="removeAllButton_Click"/>
                         <Button Name="importSSCOMButton" Content="{DynamicResource QuickSendImportSSCOM}" Margin="3,3,3,5" Click="ImportSSCOMButton_Click"/>
                     </StackPanel>
                 </ScrollViewer>
@@ -324,7 +324,8 @@
                         FontFamily="Consolas"
                         FontSize="10pt"
                         ShowLineNumbers="True"
-                        LostFocus="TextEditor_LostFocus"/>
+                        LostFocus="TextEditor_LostFocus"
+                        TextChanged="textEditor_TextChanged"  />
                     </Grid>
                     <!-- 脚本编辑界面END -->
 
@@ -343,9 +344,9 @@
                                 <ColumnDefinition Width="auto"/>
                             </Grid.ColumnDefinitions>
                             <Button Name="stopLuaButton" Margin="0,3,3,3" ToolTip="{DynamicResource LuaStop}" Foreground="DarkRed" Click="StopLuaButton_Click">
-                                <fa:FontAwesome Icon="Stop"/>
+                                <fa:FontAwesome Name="stopLuaOrExitIcon" Icon="Stop"/>
                             </Button>
-                            <Button Name="pauseLuaPrintButton" Margin="0,3,3,3" ToolTip="{DynamicResource LuaPause}" Grid.Column="1" Foreground="ForestGreen" Click="PauseLuaPrintButton_Click">
+                            <Button Name="pauseLuaPrintButton" Margin="0,3,3,3" ToolTip="{DynamicResource LuaPause}" Grid.Column="1" Foreground="ForestGreen" Click="PauseLuaPrintButton_Click" MouseRightButtonUp="pauseLuaPrintButton_MouseRightButtonUp">
                                 <fa:FontAwesome Name="pauseLuaPrintIcon" Icon="Pause"/>
                             </Button>
                             <TextBox Name="runOneLineLuaTextBox" Grid.Column="2" Margin="0,3" KeyDown="RunOneLineLuaTextBox_KeyDown"/>
@@ -362,6 +363,9 @@
                     <TabItem Header="{DynamicResource TcpTabTitle}">
                         <Frame Name="tcpTestFrame" NavigationUIVisibility="Hidden"/>
                     </TabItem>
+                    <TabItem Header="{DynamicResource TcpClientTitle}">
+                        <Frame Name="tcpClientFrame" NavigationUIVisibility="Hidden"/>
+                    </TabItem>
                     <TabItem Header="{DynamicResource EncodingToolsTab}">
                         <Frame Name="EncodingToolsFrame" NavigationUIVisibility="Hidden"/>
                     </TabItem>
@@ -373,6 +377,9 @@
                     </TabItem>
                     <TabItem Header="{DynamicResource SerialMonitorHeader}">
                         <Frame Name="SerialMonitorFrame" NavigationUIVisibility="Hidden"/>
+                    </TabItem>
+                    <TabItem Header="{DynamicResource PlotHeader}">
+                        <Frame Name="PlotFrame" NavigationUIVisibility="Hidden"/>
                     </TabItem>
                 </TabControl>
             </TabItem>
