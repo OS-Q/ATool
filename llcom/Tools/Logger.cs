@@ -54,7 +54,7 @@ namespace llcom.Tools
                     encoding: Encoding.UTF8,
                     rollOnFileSizeLimit: true)
                 .CreateLogger();
-            AddUartLogInfo("[SRART]Logs by LLCOM. https://github.com/chenxuuu/llcom");
+            // AddUartLogInfo("[SRART]Logs by LLCOM. https://github.com/chenxuuu/llcom");
         }
 
         public static void CloseUartLog()

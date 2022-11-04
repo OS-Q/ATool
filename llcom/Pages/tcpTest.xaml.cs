@@ -231,7 +231,7 @@ namespace llcom.Pages
                 }
                 catch (Exception e)
                 {
-                    //ShowData($"📢 Create failed, {e.Message}");
+                    ShowData($"📢 Create failed, {e.Message}");
                 }
             });
             connecting = false;

@@ -36,7 +36,7 @@
       <Value Profile="(Default)">默认</Value>
     </Setting>
     <Setting Name="runScript" Type="System.String" Scope="User">
-      <Value Profile="(Default)">example</Value>
+      <Value Profile="(Default)">循环发送快捷发送区数据</Value>
     </Setting>
     <Setting Name="quickData" Type="System.String" Scope="User">
       <Value Profile="(Default)">{"data":[{"id":1,"text":"example string","hex":false},{"id":2,"text":"lua可通过接口获取此处数据","hex":false},{"id":3,"text":"aa 01 02 0d 0a","hex":true},{"id":4,"text":"此处数据会被lua处理","hex":false}]}</Value>

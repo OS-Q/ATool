@@ -232,7 +232,6 @@ namespace llcom.Tools
                     Directory.CreateDirectory(ProfilePath+"user_script_run");
                     CreateFile("DefaultFiles/user_script_run/AT控制TCP连接-快发模式.lua", ProfilePath+"user_script_run/AT控制TCP连接-快发模式.lua");
                     CreateFile("DefaultFiles/user_script_run/AT控制TCP连接-慢发模式.lua", ProfilePath+"user_script_run/AT控制TCP连接-慢发模式.lua");
-                    CreateFile("DefaultFiles/user_script_run/example.lua", ProfilePath+"user_script_run/example.lua");
                     CreateFile("DefaultFiles/user_script_run/循环发送快捷发送区数据.lua", ProfilePath+"user_script_run/循环发送快捷发送区数据.lua");
                 }
                 if (!Directory.Exists(ProfilePath+"user_script_run/requires"))
@@ -263,7 +262,7 @@ namespace llcom.Tools
                     CreateFile("DefaultFiles/user_script_recv_convert/绘制曲线-解析结构体.lua", ProfilePath + "user_script_recv_convert/绘制曲线-解析结构体.lua");
 
                 CreateFile("DefaultFiles/LICENSE", ProfilePath+"LICENSE", false);
-                CreateFile("DefaultFiles/反馈网址.txt", ProfilePath+"反馈网址.txt", false);
+                CreateFile("DefaultFiles/使用说明.txt", ProfilePath+"使用说明.txt", false);
             }
             catch(Exception e)
             {
@@ -298,7 +297,7 @@ namespace llcom.Tools
         private static void Uart_UartDataSent(object sender, EventArgs e)
         {
             Logger.AddUartLogInfo($"<-{Byte2String((byte[])sender)}");
-            Logger.AddUartLogDebug($"[HEX]{Byte2Hex((byte[])sender, " ")}");
+            // Logger.AddUartLogDebug($"[HEX]{Byte2Hex((byte[])sender, " ")}");
         }
 
         /// <summary>
@@ -309,7 +308,7 @@ namespace llcom.Tools
         private static void Uart_UartDataRecived(object sender, EventArgs e)
         {
             Logger.AddUartLogInfo($"->{Byte2String((byte[])sender)}");
-            Logger.AddUartLogDebug($"[HEX]{Byte2Hex((byte[])sender, " ")}");
+            // Logger.AddUartLogDebug($"[HEX]{Byte2Hex((byte[])sender, " ")}");
         }
 
         public static Encoding GetEncoding() => Encoding.GetEncoding(setting.encoding);

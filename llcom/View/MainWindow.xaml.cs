@@ -160,7 +160,7 @@ namespace llcom
                     LuaEnv.LuaRunEnv.LuaRunError += LuaRunEnv_LuaRunError;
 
                     //关于页面
-                    aboutFrame.Navigate(new Uri("Pages/AboutPage.xaml", UriKind.Relative));
+                    // aboutFrame.Navigate(new Uri("Pages/AboutPage.xaml", UriKind.Relative));
 
                     //tcp测试页面
                     tcpTestFrame.Navigate(new Uri("Pages/tcpTest.xaml", UriKind.Relative));
@@ -257,9 +257,9 @@ namespace llcom
                 Tools.Global.setting.quickSend = new List<ToSendData>
                         {
                             new ToSendData{id = 1,text="example string",commit="右击更改此处文字",hex=false},
-                            new ToSendData{id = 2,text="lua可通过接口获取此处数据",hex=false},
-                            new ToSendData{id = 3,text="aa 01 02 0d 0a",commit="Hex数据也能发",hex=true},
-                            new ToSendData{id = 4,text="此处数据会被lua处理",hex=false},
+                            new ToSendData{id = 2,text="aa 01 02 0d 0a",commit="Hex数据也能发",hex=true},
+                            new ToSendData{id = 3,text="lua可通过接口获取此处数据",hex=false},
+                            new ToSendData{id = 4,text="此处的数据也可以被lua处理",hex=false},
                             new ToSendData{id = 5,text="右击序号可以更改这一行的位置",hex=false},
                             new ToSendData{id = 6,text="",hex=false},
                         };
@@ -846,7 +846,7 @@ namespace llcom
             //检查文件是否存在
             if (!File.Exists(Tools.Global.ProfilePath + $"user_script_run/{fileName}.lua"))
             {
-                Tools.Global.setting.runScript = "example";
+                Tools.Global.setting.runScript = "循环发送快捷发送区数据";
                 if (!File.Exists(Tools.Global.ProfilePath + $"user_script_run/{Tools.Global.setting.runScript}.lua"))
                 {
                     File.Create(Tools.Global.ProfilePath + $"user_script_run/{Tools.Global.setting.runScript}.lua").Close();

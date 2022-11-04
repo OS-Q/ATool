@@ -157,7 +157,7 @@ namespace llcom.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("example")]
+        [global::System.Configuration.DefaultSettingValueAttribute("循环发送快捷发送区数据")]
         public string runScript {
             get {
                 return ((string)(this["runScript"]));

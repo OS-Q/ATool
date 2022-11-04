@@ -371,7 +371,6 @@
     <Resource Include="DefaultFiles\LICENSE" />
     <Resource Include="DefaultFiles\user_script_run\AT控制TCP连接-快发模式.lua" />
     <Resource Include="DefaultFiles\user_script_run\AT控制TCP连接-慢发模式.lua" />
-    <Resource Include="DefaultFiles\user_script_run\example.lua" />
     <Resource Include="DefaultFiles\user_script_run\循环发送快捷发送区数据.lua" />
     <Resource Include="DefaultFiles\user_script_send_convert\16进制数据.lua" />
     <Resource Include="DefaultFiles\user_script_send_convert\GPS NMEA.lua" />
@@ -402,7 +401,7 @@
     <EmbeddedResource Include="costura32\xlua.dll" />
   </ItemGroup>
   <ItemGroup>
-    <Resource Include="DefaultFiles\反馈网址.txt" />
+    <Resource Include="DefaultFiles\使用说明.txt" />
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include=".NETFramework,Version=v4.6.2">
